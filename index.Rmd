@@ -1,0 +1,61 @@
+---
+title: "Practical Machine Learning Course Project: Weight Lifting Exercise Dataset"
+author: "Todd Funk"
+date: "December 26, 2015"
+output: html_document
+---
+
+#Executive Summary
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively.  One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 young (age 20-28) healthy participants. They were asked to perform one set of 10 repetitions of the Unilateral Dumbbell Biceps Curl in five different fashions: exactly according to the specification (Class A), throwing the elbows to the front (Class B), lifting the dumbbell only halfway (Class C), lowering the dumbbell only halfway (Class D) and throwing the hips to the front (Class E).
+information is available from the website here: (http://groupware.les.inf.puc-rio.br/har). See the section on the Weight Lifting Exercise Dataset.
+
+##The Data set
+
+First lets read in the data:
+
+```{r}
+training <- read.csv("pml-training.csv", header=TRUE, stringsAsFactors = FALSE, na.strings = c("NA","#DIV/0!",""))
+dim(training)
+```
+
+So the data has 160 columns, 1 of them, classe, is the outcome variable, the rest are potential predictors. After further investigating data (with the summary function), we see many have alot of NA values (also in #DIV/0! form in original dataset), and some are irrelevant, so we choose only the factors that are relevant
+
+```{r}
+trainingSub <- training[,c(8:10,37:49,60:68,84:86,113:124,151:160)]
+dim(trainingSub)
+```
+
+So we have reduced the dataset to 49 factor variables.
+
+#Model Fitting with cross validation
+
+With the dataset now tidy, we now aim to build a predictive model which will be able to take in the test data set and predict what the outcome will be based on the fitted model. Here the outcome is 1 of the 5 catagorical execise motions discussedc earlier. After trying some basic model fits and looking at the data, I've concluded that the **Random Forests** model approach returns some of the highest accuracy measures. Random Forests utilize a **cross validation** of random subsampling with classification trees. Each bootstrap (random subsampling) builds another tree, and at each node of the tree, the variables are bootstrapped again. this leads to high accuracy.
+
+First, lets get the test data set we want to make predictions on:
+
+```{r}
+testing <- read.csv("pml-testing.csv", header=TRUE, stringsAsFactors = FALSE, na.strings = c("NA","#DIV/0!",""))
+```
+
+Next, we must reconfigure the test dataset to match the parameters of the training data set
+
+```{r}
+testingSub <- testing[,c(8:10,37:49,60:68,84:86,113:124,151:160)]
+dim(testingSub)
+```
+
+So as you can see we have 20 row to predict on, also note the 50th column is the index of the 20 test samples.
+
+Now, let us fit the model using random forests:
+
+```{r modelFitChunck, cache=TRUE}
+library(randomForest)
+modelFit <- randomForest(as.factor(classe) ~ ., data=trainingSub)
+modelFit
+```
+
+When looking at the confusion matrix, any values fall on the diagonal are correct preditions, any not on the diagonal are incorrect. We can see the model is pretty accurate. Class D has the highest class error rate, at 0.68%, class A has lowest at 0.05%.
+
+###Out of Sample error
+This model gives us a OOB estimated error rate of 0.28%. This is the Out Of Bag error rate(random forests utilizing bagging), so I can expect a 99.72% accuracy if were to apply the model to a test set. 
